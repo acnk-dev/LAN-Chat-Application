@@ -1,0 +1,13 @@
+package constants;
+
+public enum ActionConstants {
+    LOGIN,
+    REGISTER,
+    FETCH_ALL_USERS,
+    FETCH_ONLINE_USERS,
+    UPDATE_USER_AVAILABILITY_STATUS,
+    FETCH_PROFILE_PICTURE,
+    GET_PUBLIC_KEY,
+    SET_PUBLIC_KEY,
+    CHAT_MESSAGE
+}
