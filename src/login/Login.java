@@ -1,5 +1,12 @@
 package login;
 
+import client.Client;
+import client.MessageProcessor;
+import constants.ActionConstants;
+import constants.KeyConstants;
+import java.util.HashMap;
+import java.util.Map;
+import javax.swing.JOptionPane;
 import uicomponents.GradientSidePanel;
 import uicomponents.RoundedButton;
 import uicomponents.Theme;
@@ -7,9 +14,7 @@ import uicomponents.TitleBar;
 import register.Register;
 
 /**
- * Login screen. UI only for now - btnLogIn's click handler is a stub;
- * the actual LOGIN network call gets copied over from the old project
- * once the wire protocol is wired up.
+ * Login screen, wired to the real LOGIN network call.
  *
  * @author ancla
  */
@@ -18,9 +23,12 @@ public class Login extends javax.swing.JFrame {
     public static final int WINDOW_WIDTH = 900;
     public static final int CONTENT_HEIGHT = 556;
 
+    private static Login currentInstance;
+
     public Login() {
         setUndecorated(true);
         initComponents();
+        currentInstance = this;
         rightSidePanel.setHeading("Stay connected");
         rightSidePanel.setSubheading("Chat with anyone on your local network, instantly.");
         Theme.styleUnderlineField(tfUsername);
@@ -127,8 +135,41 @@ public class Login extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnLogInActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLogInActionPerformed
-        // TODO: wire up LOGIN network call here (copy over from old project)
+        String username = tfUsername.getText().trim();
+        String password = new String(pfPassword.getPassword());
+
+        if (username.length() == 0 || password.length() == 0) {
+            displayErrorMessage("Missing details", "Enter both a username and password");
+            return;
+        }
+
+        Map<String, Object> credentials = new HashMap<String, Object>();
+        credentials.put(KeyConstants.ACTION.toString(), ActionConstants.LOGIN);
+        credentials.put(KeyConstants.USERNAME.toString(), username);
+        credentials.put(KeyConstants.PASSWORD.toString(), password);
+        Client.getClient();
+        MessageProcessor.handleSendMessage(credentials);
     }//GEN-LAST:event_btnLogInActionPerformed
+
+    public static void disposeWindow() {
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                if (currentInstance != null) {
+                    currentInstance.dispose();
+                }
+            }
+        });
+    }
+
+    public static void displayErrorMessage(final String title, final String message) {
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                JOptionPane.showMessageDialog(currentInstance, message, title, JOptionPane.ERROR_MESSAGE);
+            }
+        });
+    }
 
     private void lblSignUpMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_lblSignUpMouseClicked
         this.dispose();

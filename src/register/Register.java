@@ -1,5 +1,23 @@
 package register;
 
+import client.Client;
+import client.MessageProcessor;
+import constants.ActionConstants;
+import constants.KeyConstants;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Pattern;
+import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import net.coobird.thumbnailator.Thumbnails;
+import parser.ByteArrayParser;
 import uicomponents.GradientSidePanel;
 import uicomponents.RoundedButton;
 import uicomponents.Theme;
@@ -7,9 +25,8 @@ import uicomponents.TitleBar;
 import login.Login;
 
 /**
- * Register screen. UI only for now - btnRegister and btnChoosePhoto click
- * handlers are stubs; actual REGISTER network call + file-chooser logic
- * get copied over from the old project once the wire protocol is wired up.
+ * Register screen, wired to the real REGISTER network call and photo
+ * picker.
  *
  * @author ancla
  */
@@ -18,9 +35,15 @@ public class Register extends javax.swing.JFrame {
     public static final int WINDOW_WIDTH = 900;
     public static final int CONTENT_HEIGHT = 556;
 
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$");
+
+    private static Register currentInstance;
+    private byte[] profilePictureData;
+
     public Register() {
         setUndecorated(true);
         initComponents();
+        currentInstance = this;
         rightSidePanel.setHeading("Join the network");
         rightSidePanel.setSubheading("Create your account and start chatting with everyone on your LAN.");
         Theme.styleUnderlineField(tfName);
@@ -174,12 +197,94 @@ public class Register extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnRegisterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRegisterActionPerformed
-        // TODO: wire up REGISTER network call here (copy over from old project)
+        String name = tfName.getText().trim();
+        String username = tfUsername.getText().trim();
+        String email = tfEmail.getText().trim();
+        String password = new String(pfPassword.getPassword());
+        String confirmPassword = new String(pfConfirmPassword.getPassword());
+
+        if (name.length() == 0 || username.length() == 0 || email.length() == 0 || password.length() == 0) {
+            JOptionPane.showMessageDialog(this, "Fill in every field", "Missing details", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (username.length() <= 2) {
+            JOptionPane.showMessageDialog(this, "Username must be more than 2 characters", "Invalid username", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (!EMAIL_PATTERN.matcher(email).matches()) {
+            JOptionPane.showMessageDialog(this, "Enter a valid email address", "Invalid email", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (password.length() < 8) {
+            JOptionPane.showMessageDialog(this, "Password must be at least 8 characters", "Invalid password", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (!password.equals(confirmPassword)) {
+            JOptionPane.showMessageDialog(this, "Passwords do not match", "Error!", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Map<String, Object> accountInfo = new HashMap<String, Object>();
+        accountInfo.put(KeyConstants.ACTION.toString(), ActionConstants.REGISTER);
+        accountInfo.put(KeyConstants.NAME.toString(), name);
+        accountInfo.put(KeyConstants.USERNAME.toString(), username);
+        accountInfo.put(KeyConstants.EMAIL.toString(), email);
+        // Sent as plaintext, same as LOGIN - server.Operations hashes it
+        // server-side on both the create and validate paths.
+        accountInfo.put(KeyConstants.PASSWORD.toString(), password);
+        byte[] picture = profilePictureData == null ? new byte[0] : profilePictureData;
+        accountInfo.put(KeyConstants.PROFILE_PIC.toString(), ByteArrayParser.getParser().stringify(picture));
+
+        System.out.println("[Register] sending REGISTER for username=" + username);
+        Client.getClient();
+        MessageProcessor.handleSendMessage(accountInfo);
+        System.out.println("[Register] REGISTER message sent");
     }//GEN-LAST:event_btnRegisterActionPerformed
 
     private void btnChoosePhotoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnChoosePhotoActionPerformed
-        // TODO: wire up JFileChooser + thumbnail logic here (copy over from old project)
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileFilter(new FileNameExtensionFilter("Image Files", "jpg", "jpeg", "png"));
+        int result = chooser.showOpenDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File sourceFile = chooser.getSelectedFile();
+        if (sourceFile == null) {
+            return;
+        }
+
+        try {
+            BufferedImage thumbnail = Thumbnails.of(sourceFile).size(200, 200).asBufferedImage();
+            btnChoosePhoto.setIcon(new ImageIcon(thumbnail));
+            btnChoosePhoto.setText("");
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(thumbnail, "jpg", baos);
+            profilePictureData = baos.toByteArray();
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Error!", JOptionPane.ERROR_MESSAGE);
+        }
     }//GEN-LAST:event_btnChoosePhotoActionPerformed
+
+    public static void displayMessage(final String title, final String message) {
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                JOptionPane.showMessageDialog(currentInstance, message, title, JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+    }
+
+    public static void disposeWindow() {
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                if (currentInstance != null) {
+                    currentInstance.dispose();
+                }
+            }
+        });
+    }
 
     private void lblLoginMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_lblLoginMouseClicked
         this.dispose();
