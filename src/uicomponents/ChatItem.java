@@ -5,6 +5,7 @@ import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -24,15 +25,18 @@ public class ChatItem extends JPanel {
     public static final int HEIGHT = 72;
     private static final int AVATAR_SIZE = 44;
 
+    private final int contactUserId;
     private final String contactName;
     private String lastMessage;
     private String timestamp;
     private int unreadCount;
     private boolean selected;
     private boolean online;
+    private Image profileImage;
     private Runnable onClick;
 
-    public ChatItem(String contactName, String lastMessage, String timestamp, int unreadCount) {
+    public ChatItem(int contactUserId, String contactName, String lastMessage, String timestamp, int unreadCount) {
+        this.contactUserId = contactUserId;
         this.contactName = contactName;
         this.lastMessage = lastMessage;
         this.timestamp = timestamp;
@@ -95,12 +99,30 @@ public class ChatItem extends JPanel {
         repaint();
     }
 
+    public void clearUnread() {
+        this.unreadCount = 0;
+        repaint();
+    }
+
     public String getContactName() {
         return contactName;
     }
 
+    public int getContactUserId() {
+        return contactUserId;
+    }
+
     public int getUnreadCount() {
         return unreadCount;
+    }
+
+    public void setProfileImage(Image image) {
+        this.profileImage = image;
+        repaint();
+    }
+
+    public Image getProfileImage() {
+        return profileImage;
     }
 
     @Override
@@ -116,15 +138,7 @@ public class ChatItem extends JPanel {
         }
 
         int avatarY = (HEIGHT - AVATAR_SIZE) / 2;
-        g2.setColor(Theme.avatarColorFor(contactName));
-        g2.fillOval(16, avatarY, AVATAR_SIZE, AVATAR_SIZE);
-        g2.setColor(Theme.BACKGROUND);
-        g2.setFont(Theme.bold(16));
-        FontMetrics avatarFm = g2.getFontMetrics();
-        String initial = contactName.length() == 0 ? "?" : contactName.substring(0, 1).toUpperCase();
-        int aix = 16 + (AVATAR_SIZE - avatarFm.stringWidth(initial)) / 2;
-        int aiy = avatarY + (AVATAR_SIZE - avatarFm.getHeight()) / 2 + avatarFm.getAscent();
-        g2.drawString(initial, aix, aiy);
+        AvatarPainter.paint(g2, 16, avatarY, AVATAR_SIZE, profileImage, Theme.avatarColorFor(contactName), contactName);
 
         if (online) {
             int dotSize = 12;

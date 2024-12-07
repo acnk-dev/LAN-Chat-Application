@@ -2,7 +2,6 @@ package uicomponents;
 
 import java.awt.Color;
 import java.awt.Cursor;
-import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -25,6 +24,7 @@ public class SideRail extends JPanel {
     private static final int AVATAR_SIZE = 44;
 
     private String profileName = "?";
+    private java.awt.Image profileImage;
     private Runnable onProfileClick;
 
     public SideRail() {
@@ -44,6 +44,11 @@ public class SideRail extends JPanel {
 
     public void setProfileName(String name) {
         this.profileName = (name == null || name.length() == 0) ? "?" : name;
+        repaint();
+    }
+
+    public void setProfileImage(java.awt.Image image) {
+        this.profileImage = image;
         repaint();
     }
 
@@ -80,16 +85,8 @@ public class SideRail extends JPanel {
         g2.fillOval(cx + 6, dotY, 4, 4);
 
         int avatarY = getHeight() - AVATAR_SIZE - 20;
-        Color avatarColor = Theme.avatarColorFor(profileName);
-        g2.setColor(avatarColor);
-        g2.fillOval(cx - AVATAR_SIZE / 2, avatarY, AVATAR_SIZE, AVATAR_SIZE);
-        String initial = profileName.substring(0, 1).toUpperCase();
-        g2.setColor(Theme.BACKGROUND);
-        g2.setFont(Theme.bold(16));
-        FontMetrics fm = g2.getFontMetrics();
-        int tx = cx - fm.stringWidth(initial) / 2;
-        int ty = avatarY + (AVATAR_SIZE - fm.getHeight()) / 2 + fm.getAscent();
-        g2.drawString(initial, tx, ty);
+        AvatarPainter.paint(g2, cx - AVATAR_SIZE / 2, avatarY, AVATAR_SIZE, profileImage,
+                Theme.avatarColorFor(profileName), profileName);
     }
 
     private Color withAlpha(Color c, int alpha) {

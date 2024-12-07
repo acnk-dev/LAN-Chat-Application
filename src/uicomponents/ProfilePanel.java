@@ -3,9 +3,7 @@ package uicomponents;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.FontMetrics;
 import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -14,7 +12,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.geom.Point2D;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -34,8 +31,8 @@ import javax.swing.SwingConstants;
  * then a settings-style card for the rest of the fields - not just a
  * flat stack of labels floating in the middle of a big empty pane.
  *
- * Change-photo and log-out are stub handlers for now, wired up once the
- * server/client network layer is ported over.
+ * Photo can only be set at registration - the old project never had a
+ * way to change it afterward, so this page doesn't pretend it does.
  *
  * @author aditya
  */
@@ -51,7 +48,6 @@ public class ProfilePanel extends JPanel {
     private final RoundedButton btnLogOut = new RoundedButton("Log Out");
 
     private Runnable onBack;
-    private Runnable onChangePhoto;
     private Runnable onLogOut;
 
     public ProfilePanel() {
@@ -105,14 +101,6 @@ public class ProfilePanel extends JPanel {
 
         banner.setAlignmentX(Component.CENTER_ALIGNMENT);
         banner.setMaximumSize(new Dimension(Integer.MAX_VALUE, banner.getPreferredSize().height));
-        banner.setOnAvatarClick(new Runnable() {
-            @Override
-            public void run() {
-                if (onChangePhoto != null) {
-                    onChangePhoto.run();
-                }
-            }
-        });
 
         lblName.setFont(Theme.bold(20));
         lblName.setForeground(Theme.TEXT_PRIMARY);
@@ -191,12 +179,12 @@ public class ProfilePanel extends JPanel {
         statusPill.setOnline(online);
     }
 
-    public void setOnBack(Runnable onBack) {
-        this.onBack = onBack;
+    public void setProfileImage(java.awt.Image image) {
+        banner.setImage(image);
     }
 
-    public void setOnChangePhoto(Runnable onChangePhoto) {
-        this.onChangePhoto = onChangePhoto;
+    public void setOnBack(Runnable onBack) {
+        this.onBack = onBack;
     }
 
     public void setOnLogOut(Runnable onLogOut) {
@@ -234,22 +222,11 @@ public class ProfilePanel extends JPanel {
         private static final int AVATAR_SIZE = 112;
 
         private String displayName = "?";
-        private Runnable onAvatarClick;
+        private java.awt.Image image;
 
         ProfileBanner() {
             setOpaque(false);
             setPreferredSize(new Dimension(0, BANNER_HEIGHT + AVATAR_SIZE / 2 + 10));
-            setCursor(new Cursor(Cursor.HAND_CURSOR));
-            addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    int cx = getWidth() / 2;
-                    if (Point2D.distance(e.getX(), e.getY(), cx, BANNER_HEIGHT) <= AVATAR_SIZE / 2.0
-                            && onAvatarClick != null) {
-                        onAvatarClick.run();
-                    }
-                }
-            });
         }
 
         void setDisplayName(String name) {
@@ -257,8 +234,9 @@ public class ProfilePanel extends JPanel {
             repaint();
         }
 
-        void setOnAvatarClick(Runnable onAvatarClick) {
-            this.onAvatarClick = onAvatarClick;
+        void setImage(java.awt.Image image) {
+            this.image = image;
+            repaint();
         }
 
         @Override
@@ -279,31 +257,8 @@ public class ProfilePanel extends JPanel {
             g2.fillOval(cx - AVATAR_SIZE / 2 - ringPad, cy - AVATAR_SIZE / 2 - ringPad,
                     AVATAR_SIZE + ringPad * 2, AVATAR_SIZE + ringPad * 2);
 
-            g2.setColor(Theme.avatarColorFor(displayName));
-            g2.fillOval(cx - AVATAR_SIZE / 2, cy - AVATAR_SIZE / 2, AVATAR_SIZE, AVATAR_SIZE);
-
-            String initial = displayName.substring(0, 1).toUpperCase();
-            g2.setColor(Theme.BACKGROUND);
-            g2.setFont(Theme.bold(36));
-            FontMetrics fm = g2.getFontMetrics();
-            int tx = cx - fm.stringWidth(initial) / 2;
-            int ty = cy - fm.getHeight() / 2 + fm.getAscent();
-            g2.drawString(initial, tx, ty);
-
-            int badgeSize = 30;
-            int bx = cx + AVATAR_SIZE / 2 - badgeSize + 6;
-            int by = cy + AVATAR_SIZE / 2 - badgeSize + 6;
-            g2.setColor(Theme.BACKGROUND);
-            g2.fillOval(bx - 3, by - 3, badgeSize + 6, badgeSize + 6);
-            g2.setColor(Theme.ACCENT);
-            g2.fillOval(bx, by, badgeSize, badgeSize);
-            g2.setColor(Theme.BACKGROUND);
-            g2.setFont(Theme.bold(16));
-            FontMetrics bfm = g2.getFontMetrics();
-            String plus = "+";
-            int ptx = bx + (badgeSize - bfm.stringWidth(plus)) / 2;
-            int pty = by + (badgeSize - bfm.getHeight()) / 2 + bfm.getAscent();
-            g2.drawString(plus, ptx, pty);
+            AvatarPainter.paint(g2, cx - AVATAR_SIZE / 2, cy - AVATAR_SIZE / 2, AVATAR_SIZE, image,
+                    Theme.avatarColorFor(displayName), displayName);
         }
     }
 }

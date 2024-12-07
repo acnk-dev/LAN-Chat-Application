@@ -4,7 +4,6 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -52,11 +51,12 @@ public class ConversationPanel extends JPanel {
     private final JTextField inputField = new JTextField();
 
     private String activeContact;
+    private int activeContactUserId = -1;
     private MessageSendListener sendListener;
     private Runnable onClose;
 
     public interface MessageSendListener {
-        void onSend(String contactUsername, String message);
+        void onSend(int contactUserId, String message);
     }
 
     public ConversationPanel() {
@@ -211,7 +211,7 @@ public class ConversationPanel extends JPanel {
         addMessage(new SentMessagePanel(text, currentTimestamp()), true);
         inputField.setText("");
         if (sendListener != null) {
-            sendListener.onSend(activeContact, text);
+            sendListener.onSend(activeContactUserId, text);
         }
     }
 
@@ -224,22 +224,35 @@ public class ConversationPanel extends JPanel {
         this.onClose = onClose;
     }
 
-    public void openChat(String contactUsername, String displayName) {
+    public void openChat(int contactUserId, String contactUsername, String displayName) {
         this.activeContact = contactUsername;
+        this.activeContactUserId = contactUserId;
         headerName.setText(displayName);
         headerAvatar.setInitial(displayName);
+        headerAvatar.setImage(null);
         messageColumn.removeAll();
         messageColumn.revalidate();
         messageColumn.repaint();
         cardLayout.show(this, CARD_ACTIVE);
     }
 
+    public int getActiveContactUserId() {
+        return activeContactUserId;
+    }
+
     public void setOnlineStatus(boolean online) {
         headerAvatar.setOnline(online);
     }
 
+    public void setProfileImage(int contactUserId, java.awt.Image image) {
+        if (contactUserId == activeContactUserId) {
+            headerAvatar.setImage(image);
+        }
+    }
+
     public void showEmptyState() {
         this.activeContact = null;
+        this.activeContactUserId = -1;
         cardLayout.show(this, CARD_EMPTY);
     }
 
@@ -303,16 +316,22 @@ public class ConversationPanel extends JPanel {
         }
     }
 
-    /** Small circular avatar with an initial letter, used in the conversation header. */
+    /** Small circular avatar with an initial letter (or a real photo), used in the conversation header. */
     private static class AvatarLabel extends JLabel {
         private String initial = "?";
         private java.awt.Color bgColor = Theme.ACCENT;
         private boolean online;
+        private java.awt.Image image;
 
         void setInitial(String name) {
             String source = (name == null || name.length() == 0) ? "?" : name;
             this.initial = source.substring(0, 1).toUpperCase();
             this.bgColor = Theme.avatarColorFor(source);
+            repaint();
+        }
+
+        void setImage(java.awt.Image image) {
+            this.image = image;
             repaint();
         }
 
@@ -324,16 +343,7 @@ public class ConversationPanel extends JPanel {
         @Override
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g2.setColor(bgColor);
-            g2.fillOval(0, 0, getWidth(), getHeight());
-            g2.setColor(Theme.BACKGROUND);
-            g2.setFont(Theme.bold(14));
-            FontMetrics fm = g2.getFontMetrics();
-            int tx = (getWidth() - fm.stringWidth(initial)) / 2;
-            int ty = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-            g2.drawString(initial, tx, ty);
+            AvatarPainter.paint(g2, 0, 0, getWidth(), image, bgColor, initial);
 
             if (online) {
                 int dotSize = 11;
